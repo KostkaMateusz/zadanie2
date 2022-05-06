@@ -1,25 +1,9 @@
 # python3 find-available-slot.py --calendars /in --duration-in-minutes 30 --minumum-people 2
 
-# import argparse
-
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--calendars")
-# parser.add_argument("--duration")
-# parser.add_argument("--minumum")
-# args = parser.parse_args()
-
-# path = args.calendars
-# duration=args.duration
-# minimum=args.minumum
+import argparse
 import os
 from datetime import datetime
 import itertools
-
-
-path = "calendars"
-duration = 15
-minimum = 2
-now = datetime.strptime("2022-07-02 16:00:00", "%Y-%m-%d %H:%M:%S")
 
 
 def read_calendars_from_path(path: str) -> list[list[datetime]]:
@@ -88,14 +72,14 @@ def trim_periods_before_now(start, end, now):
     filtered_end = []
 
     for start_item, end_item in zip(start, end):
-        if now < end_item:
+        if now < start_item:
             filtered_start.append(start_item)
             filtered_end.append(end_item)
 
     return filtered_start, filtered_end
 
 
-def find_max_attendants(start_periods, end_periods):
+def find_max_attendants(start_periods, end_periods, minimum_required):
 
     # Sort arrival and exit arrays
     start_periods.sort()
@@ -110,6 +94,8 @@ def find_max_attendants(start_periods, end_periods):
 
     # process all events in sorted order
     while i < n and j < n:
+        if attendants_avaliable >= minimum_required:
+            return time
         # If next event in sorted order is
         # avalaible, increment count of attendants
         if start_periods[i] <= end_periods[j]:
@@ -119,23 +105,41 @@ def find_max_attendants(start_periods, end_periods):
             if attendants_avaliable > max_attendants:
                 max_attendants = attendants_avaliable
                 time = start_periods[i]
+
             # increment index of arrival array
             i = i + 1
         else:
             attendants_avaliable = attendants_avaliable - 1
             j = j + 1
 
-    print(time)
-    print(max_attendants)
+    return time
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--calendars")
+    parser.add_argument("--duration-in-minutes", type=int)
+    parser.add_argument("--minumum-people", type=int)
+    args = parser.parse_args()
+
+    path = args.calendars
+    duration = args.duration_in_minutes
+    minimum = args.minumum_people
+    now = datetime.strptime("2022-07-02 08:00:00", "%Y-%m-%d %H:%M:%S")
+
+    # path = "calendars"
+    # duration = 60
+    # minimum = 4
+
     periods = read_calendars_from_path(path)
 
     start, end = generate_free_time_periods(periods)
 
     filtered_start, filtered_end = filter_periods_by_duration(start, end, duration)
 
-    filtered_start, filtered_end = trim_periods_before_now(filtered_start, filtered_end, now)
+    trimed_start, trimed_end = trim_periods_before_now(filtered_start, filtered_end, now)
 
-    find_max_attendants(filtered_start, filtered_end)
+    time = find_max_attendants(trimed_start, trimed_end, minimum)
+
+    print(time)
